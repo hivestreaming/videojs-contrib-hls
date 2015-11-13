@@ -54,7 +54,7 @@ module.exports = function(grunt) {
           'src/metadata-stream.js',
           'src/segment-parser.js',
           'src/m3u8/m3u8-parser.js',
-          'src/xhr-hive.js',
+          'src/xhr-hive-ws.js',
           'src/playlist.js',
           'src/playlist-loader.js',
           'node_modules/pkcs7/dist/pkcs7.unpad.js',
