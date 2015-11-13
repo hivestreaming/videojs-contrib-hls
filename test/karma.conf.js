@@ -60,7 +60,7 @@ module.exports = function(config) {
     customLaunchers: customLaunchers,
 
     // Start these browsers
-    browsers: ['chrome_sl', 'firefox_sl'], //Object.keys(customLaunchers),
+    browsers: ['chrome_sl'], //Object.keys(customLaunchers),
 
     // List of files / patterns to load in the browser
     // Add any new src files to this list.
@@ -69,24 +69,14 @@ module.exports = function(config) {
     // add their paths to this list.
 
     files: [
-      '../node_modules/sinon/lib/sinon.js',
-      '../node_modules/sinon/lib/sinon/util/event.js',
-      '../node_modules/sinon/lib/sinon/util/fake_xml_http_request.js',
-      '../node_modules/sinon/lib/sinon/util/xhr_ie.js',
-      '../node_modules/sinon/lib/sinon/util/fake_timers.js',
-      '../node_modules/video.js/dist/video-js/video.dev.js',
+      '../node_modules/sinon/pkg/sinon.js',
+      '../node_modules/video.js/dist/video-js.css',
+      '../node_modules/video.js/dist/video.js',
       '../node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js',
       '../node_modules/pkcs7/dist/pkcs7.unpad.js',
       '../test/karma-qunit-shim.js',
       '../src/videojs-hls.js',
       '../src/stream.js',
-      '../src/flv-tag.js',
-      '../src/exp-golomb.js',
-      '../src/h264-extradata.js',
-      '../src/h264-stream.js',
-      '../src/aac-stream.js',
-      '../src/metadata-stream.js',
-      '../src/segment-parser.js',
       '../src/m3u8/m3u8-parser.js',
       '../src/xhr.js',
       '../src/playlist.js',
@@ -96,7 +86,7 @@ module.exports = function(config) {
       '../tmp/expected.js',
       'tsSegment-bc.js',
       '../src/bin-utils.js',
-      '../test/*.js'
+      '../test/*.js',
       ],
 
     plugins: [

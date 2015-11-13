@@ -1,6 +1,9 @@
 'use strict';
 
-var basename = require('path').basename;
+var
+  basename = require('path').basename,
+  mediaSourcesPath = 'node_modules/videojs-contrib-media-sources/dist/',
+  mediaSourcesDebug = mediaSourcesPath + 'videojs-media-sources.js';
 
 module.exports = function(grunt) {
   var pkg = grunt.file.readJSON('package.json');
@@ -24,22 +27,17 @@ module.exports = function(grunt) {
       },
       dist: {
         nonull: true,
-        src: ['src/videojs-hls.js',
-              'src/stream.js',
-              'src/flv-tag.js',
-              'src/exp-golomb.js',
-              'src/h264-extradata.js',
-              'src/h264-stream.js',
-              'src/aac-stream.js',
-              'src/metadata-stream.js',
-              'src/segment-parser.js',
-              'src/m3u8/m3u8-parser.js',
-              'src/xhr.js',
-              'src/playlist.js',
-              'src/playlist-loader.js',
-              'node_modules/pkcs7/dist/pkcs7.unpad.js',
-              'src/decrypter.js'
-            ],
+        src: [
+          mediaSourcesDebug,
+          'src/videojs-hls.js',
+          'src/xhr.js',
+          'src/stream.js',
+          'src/m3u8/m3u8-parser.js',
+          'src/playlist.js',
+          'src/playlist-loader.js',
+          'node_modules/pkcs7/dist/pkcs7.unpad.js',
+          'src/decrypter.js'
+        ],
         dest: 'dist/videojs.hls.js'
       },
       disthive: {
@@ -119,6 +117,10 @@ module.exports = function(grunt) {
       }
     },
     watch: {
+      build: {
+        files: '<%= concat.dist.src %>',
+        tasks: ['clean', 'concat', 'uglify']
+      },
       gruntfile: {
         files: '<%= jshint.gruntfile.src %>',
         tasks: ['jshint:gruntfile']
@@ -354,12 +356,15 @@ module.exports = function(grunt) {
   // Launch a Development Environment
   grunt.registerTask('dev', 'Launching Dev Environment', 'concurrent:dev');
 
-  // Default task.
-  grunt.registerTask('default',
+  grunt.registerTask('build',
                      ['clean',
-                      'test',
                       'concat',
                       'uglify']);
+
+  // Default task.
+  grunt.registerTask('default',
+                     ['test',
+                      'build']);
 
   // The test task will run `karma:saucelabs` when running in travis,
   // otherwise, it'll default to running karma in chrome.
@@ -370,6 +375,7 @@ module.exports = function(grunt) {
   grunt.registerTask('test', function() {
     var tasks = this.args;
 
+//<<<<<<< HEAD
     //grunt.task.run(['jshint', 'manifests-to-js']);
 
     //if (process.env.TRAVIS) {
@@ -396,5 +402,33 @@ module.exports = function(grunt) {
     //
     //  grunt.task.run(tasks);
     //}
+//=======
+//    grunt.task.run(['jshint', 'manifests-to-js']);
+//
+//    if (process.env.TRAVIS) {
+//      if (process.env.TRAVIS_PULL_REQUEST === 'false') {
+//        grunt.task.run(['karma:saucelabs']);
+//        grunt.task.run(['connect:test', 'protractor:saucelabs']);
+//      } else {
+//        grunt.task.run(['karma:firefox']);
+//      }
+//    } else {
+//      if (tasks.length === 0) {
+//        tasks.push('chrome');
+//      }
+//      if (tasks.length === 1) {
+//        tasks = tasks[0].split(',');
+//      }
+//      tasks = tasks.reduce(function(acc, el) {
+//        acc.push('karma:' + el);
+//        if (/chrome|firefox|safari|ie/.test(el)) {
+//          acc.push('protractor:' + el);
+//        }
+//        return acc;
+//      }, ['connect:test']);
+//
+//      grunt.task.run(tasks);
+//    }
+//>>>>>>> eb5c0c617ccc5181cdbd25b540ec72327fc6b570
   });
 };

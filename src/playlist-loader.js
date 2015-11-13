@@ -1,24 +1,16 @@
 /**
+ * playlist-loader
+ *
  * A state machine that manages the loading, caching, and updating of
- * M3U8 playlists. When tracking a live playlist, loaders will keep
- * track of the duration of content that expired since the loader was
- * initialized and when the current discontinuity sequence was
- * encountered. A complete media timeline for a live playlist with
- * expiring segments and discontinuities looks like this:
+ * M3U8 playlists.
  *
- * |-- expiredPreDiscontinuity --|-- expiredPostDiscontinuity --|-- segments --|
- *
- * You can use these values to calculate how much time has elapsed
- * since the stream began loading or how long it has been since the
- * most recent discontinuity was encountered, for instance.
  */
 (function(window, videojs) {
   'use strict';
   var
     resolveUrl = videojs.Hls.resolveUrl,
     xhr = videojs.Hls.xhr,
-    Playlist = videojs.Hls.Playlist,
-    mergeOptions = videojs.util.mergeOptions,
+    mergeOptions = videojs.mergeOptions,
 
     /**
      * Returns a new master playlist that is the result of merging an
@@ -159,21 +151,6 @@
       // initialize the loader state
       loader.state = 'HAVE_NOTHING';
 
-      // the total duration of all segments that expired and have been
-      // removed from the current playlist after the last
-      // #EXT-X-DISCONTINUITY. In a live playlist without
-      // discontinuities, this is the total amount of time that has
-      // been removed from the stream since the playlist loader began
-      // tracking it.
-      loader.expiredPostDiscontinuity_ = 0;
-
-      // the total duration of all segments that expired and have been
-      // removed from the current playlist before the last
-      // #EXT-X-DISCONTINUITY. The total amount of time that has
-      // expired is always the sum of expiredPreDiscontinuity_ and
-      // expiredPostDiscontinuity_.
-      loader.expiredPreDiscontinuity_ = 0;
-
       // capture the prototype dispose function
       dispose = this.dispose;
 
@@ -195,20 +172,20 @@
        * active media playlist. When called with a single argument,
        * triggers the playlist loader to asynchronously switch to the
        * specified media playlist. Calling this method while the
-       * loader is in the HAVE_NOTHING or HAVE_MASTER states causes an
-       * error to be emitted but otherwise has no effect.
+       * loader is in the HAVE_NOTHING causes an error to be emitted
+       * but otherwise has no effect.
        * @param playlist (optional) {object} the parsed media playlist
        * object to switch to
        */
       loader.media = function(playlist) {
-        var mediaChange = false;
+        var startingState = loader.state, mediaChange;
         // getter
         if (!playlist) {
           return loader.media_;
         }
 
         // setter
-        if (loader.state === 'HAVE_NOTHING' || loader.state === 'HAVE_MASTER') {
+        if (loader.state === 'HAVE_NOTHING') {
           throw new Error('Cannot switch media playlist from ' + loader.state);
         }
 
@@ -221,7 +198,7 @@
           playlist = loader.master.playlists[playlist];
         }
 
-        mediaChange = playlist.uri !== loader.media_.uri;
+        mediaChange = !loader.media_ || playlist.uri !== loader.media_.uri;
 
         // switch to fully loaded playlists immediately
         if (loader.master.playlists[playlist.uri].endList) {
@@ -262,11 +239,21 @@
 
         // request the new playlist
         request = xhr({
-          url: resolveUrl(loader.master.uri, playlist.uri),
+          uri: resolveUrl(loader.master.uri, playlist.uri),
           withCredentials: withCredentials
-        }, function(error) {
-          haveMetadata(error, this, playlist.uri);
-          loader.trigger('mediachange');
+        }, function(error, request) {
+          haveMetadata(error, request, playlist.uri);
+
+          if (error) {
+            return;
+          }
+
+          // fire loadedmetadata the first time a media playlist is loaded
+          if (startingState === 'HAVE_MASTER') {
+            loader.trigger('loadedmetadata');
+          } else {
+            loader.trigger('mediachange');
+          }
         });
       };
 
@@ -283,32 +270,35 @@
 
         loader.state = 'HAVE_CURRENT_METADATA';
         request = xhr({
-          url: resolveUrl(loader.master.uri, loader.media().uri),
+          uri: resolveUrl(loader.master.uri, loader.media().uri),
           withCredentials: withCredentials
-        }, function(error) {
-          haveMetadata(error, this, loader.media().uri);
+        }, function(error, request) {
+          haveMetadata(error, request, loader.media().uri);
         });
       });
 
       // request the specified URL
-      xhr({
-        url: srcUrl,
+      request = xhr({
+        uri: srcUrl,
         withCredentials: withCredentials
-      }, function(error) {
+      }, function(error, req) {
         var parser, i;
+
+        // clear the loader's request reference
+        request = null;
 
         if (error) {
           loader.error = {
-            status: this.status,
+            status: req.status,
             message: 'HLS playlist request error at URL: ' + srcUrl,
-            responseText: this.responseText,
+            responseText: req.responseText,
             code: 2 // MEDIA_ERR_NETWORK
           };
           return loader.trigger('error');
         }
 
         parser = new videojs.m3u8.Parser();
-        parser.push(this.responseText);
+        parser.push(req.responseText);
         parser.end();
 
         loader.state = 'HAVE_MASTER';
@@ -325,19 +315,13 @@
             loader.master.playlists[loader.master.playlists[i].uri] = loader.master.playlists[i];
           }
 
-          request = xhr({
-            url: resolveUrl(srcUrl, parser.manifest.playlists[0].uri),
-            withCredentials: withCredentials
-          }, function(error) {
-            // pass along the URL specified in the master playlist
-            haveMetadata(error,
-                         this,
-                         parser.manifest.playlists[0].uri);
-            if (!error) {
-              loader.trigger('loadedmetadata');
-            }
-          });
-          return loader.trigger('loadedplaylist');
+          loader.trigger('loadedplaylist');
+          if (!request) {
+            // no media playlist was specifically selected so start
+            // from the first listed one
+            loader.media(parser.manifest.playlists[0]);
+          }
+          return;
         }
 
         // loaded a media playlist
@@ -349,7 +333,7 @@
           }]
         };
         loader.master.playlists[srcUrl] = loader.master.playlists[0];
-        haveMetadata(null, this, srcUrl);
+        haveMetadata(null, req, srcUrl);
         return loader.trigger('loadedmetadata');
       });
     };
@@ -361,38 +345,6 @@
    * @param update {object} the updated media playlist object
    */
   PlaylistLoader.prototype.updateMediaPlaylist_ = function(update) {
-    var lastDiscontinuity, expiredCount, i;
-
-    if (this.media_) {
-      expiredCount = update.mediaSequence - this.media_.mediaSequence;
-
-      // setup the index for duration calculations so that the newly
-      // expired time will be accumulated after the last
-      // discontinuity, unless we discover otherwise
-      lastDiscontinuity = this.media_.mediaSequence;
-
-      if (this.media_.discontinuitySequence !== update.discontinuitySequence) {
-        i = expiredCount;
-        while (i--) {
-          if (this.media_.segments[i].discontinuity) {
-            // a segment that begins a new discontinuity sequence has expired
-            lastDiscontinuity = i + this.media_.mediaSequence;
-            this.expiredPreDiscontinuity_ += this.expiredPostDiscontinuity_;
-            this.expiredPostDiscontinuity_ = 0;
-            break;
-          }
-        }
-      }
-
-      // update the expirated durations
-      this.expiredPreDiscontinuity_ += Playlist.duration(this.media_,
-                                                         this.media_.mediaSequence,
-                                                         lastDiscontinuity);
-      this.expiredPostDiscontinuity_ += Playlist.duration(this.media_,
-                                                          lastDiscontinuity,
-                                                          update.mediaSequence);
-    }
-
     this.media_ = this.master.playlists[update.uri];
   };
 
@@ -415,7 +367,17 @@
    * closest playback position that is currently available.
    */
   PlaylistLoader.prototype.getMediaIndexForTime_ = function(time) {
-    var i;
+    var
+      i,
+      segment,
+      originalTime = time,
+      targetDuration = this.media_.targetDuration || 10,
+      numSegments = this.media_.segments.length,
+      lastSegment = numSegments - 1,
+      startIndex,
+      endIndex,
+      knownStart,
+      knownEnd;
 
     if (!this.media_) {
       return 0;
@@ -423,28 +385,109 @@
 
     // when the requested position is earlier than the current set of
     // segments, return the earliest segment index
-    time -= this.expiredPreDiscontinuity_ + this.expiredPostDiscontinuity_;
     if (time < 0) {
       return 0;
     }
 
-    for (i = 0; i < this.media_.segments.length; i++) {
-      time -= Playlist.duration(this.media_,
-                                this.media_.mediaSequence + i,
-                                this.media_.mediaSequence + i + 1,
-                                false);
-
-      // HLS version 3 and lower round segment durations to the
-      // nearest decimal integer. When the correct media index is
-      // ambiguous, prefer the higher one.
-      if (time <= 0) {
-        return i;
+    // 1) Walk backward until we find the first segment with timeline
+    // information that is earlier than `time`
+    for (i = lastSegment; i >= 0; i--) {
+      segment = this.media_.segments[i];
+      if (segment.end !== undefined && segment.end <= time) {
+        startIndex = i + 1;
+        knownStart = segment.end;
+        if (startIndex >= numSegments) {
+          // The last segment claims to end *before* the time we are
+          // searching for so just return it
+          return numSegments;
+        }
+        break;
+      }
+      if (segment.start !== undefined && segment.start <= time) {
+        if (segment.end !== undefined && segment.end > time) {
+          // we've found the target segment exactly
+          return i;
+        }
+        startIndex = i;
+        knownStart = segment.start;
+        break;
       }
     }
 
-    // the playback position is outside the range of available
-    // segments so return the last one
-    return this.media_.segments.length - 1;
+    // 2) Walk forward until we find the first segment with timeline
+    // information that is greater than `time`
+    for (i = 0; i < numSegments; i++) {
+      segment = this.media_.segments[i];
+      if (segment.start !== undefined && segment.start > time) {
+        endIndex = i - 1;
+        knownEnd = segment.start;
+        if (endIndex < 0) {
+          // The first segment claims to start *after* the time we are
+          // searching for so just return it
+          return -1;
+        }
+        break;
+      }
+      if (segment.end !== undefined && segment.end > time) {
+        endIndex = i;
+        knownEnd = segment.end;
+        break;
+      }
+    }
+
+    if (startIndex !== undefined) {
+      // We have a known-start point that is before our desired time so
+      // walk from that point forwards
+      time = time - knownStart;
+      for (i = startIndex; i < (endIndex || numSegments); i++) {
+        segment = this.media_.segments[i];
+        time -= segment.duration || targetDuration;
+        if (time < 0) {
+          return i;
+        }
+      }
+
+      if (i === endIndex) {
+        // We haven't found a segment but we did hit a known end point
+        // so fallback to "Algorithm Jon" - try to interpolate the segment
+        // index based on the known span of the timeline we are dealing with
+        // and the number of segments inside that span
+        return startIndex + Math.floor(
+          ((originalTime - knownStart) / (knownEnd - knownStart)) *
+          (endIndex - startIndex));
+      }
+
+      // We _still_ haven't found a segment so load the last one
+      return lastSegment;
+    } else if (endIndex !== undefined) {
+      // We _only_ have a known-end point that is after our desired time so
+      // walk from that point backwards
+      time = knownEnd - time;
+      for (i = endIndex; i >= 0; i--) {
+        segment = this.media_.segments[i];
+        time -= segment.duration || targetDuration;
+        if (time < 0) {
+          return i;
+        }
+      }
+      // We haven't found a segment so load the first one
+      return 0;
+    } else {
+      // We known nothing so use "Algorithm A" - walk from the front
+      // of the playlist naively subtracking durations until we find
+      // a segment that contains time and return it
+      for (i = 0; i < numSegments; i++) {
+        segment = this.media_.segments[i];
+        time -= segment.duration || targetDuration;
+        if (time < 0) {
+          return i;
+        }
+      }
+      // We are out of possible candidates so load the last one...
+      // The last one is the least likely to overlap a buffer and therefore
+      // the one most likely to tell us something about the timeline
+      return lastSegment;
+    }
   };
 
   videojs.Hls.PlaylistLoader = PlaylistLoader;
