@@ -65,6 +65,8 @@
         return callback.call(this, 'timeout', url);
       }
 
+
+
       // request aborted or errored
       if (this.status >= 400 || this.status === 0) {
         return callback.call(this, true, url);
@@ -79,6 +81,9 @@
 
       return callback.call(this, false, url);
     };
+
+      console.log("REQ " +url)
+
     request.send(null);
     return request;
   };
