@@ -97,9 +97,9 @@ videojs.HlsSourceHandler = function(mode) {
       var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
 
       // favor native HLS support if it's available
-      if (videojs.Hls.supportsNativeHls) {
-        return false;
-      }
+      //if (videojs.Hls.supportsNativeHls) {
+      //  return false;
+      //}
       return mpegurlRE.test(srcObj.type);
     },
     handleSource: function(source, tech) {

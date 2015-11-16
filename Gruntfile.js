@@ -42,23 +42,18 @@ module.exports = function(grunt) {
       },
       disthive: {
         nonull: true,
-        src: ['src/videojs-hls.js',
+        src: [
+          mediaSourcesDebug,
+          'src/videojs-hls.js',
+          'src/xhr-hive-5.js',
           'src/stream.js',
-          'src/flv-tag.js',
-          'src/exp-golomb.js',
-          'src/h264-extradata.js',
-          'src/h264-stream.js',
-          'src/aac-stream.js',
-          'src/metadata-stream.js',
-          'src/segment-parser.js',
           'src/m3u8/m3u8-parser.js',
-          'src/xhr-hive-ws.js',
           'src/playlist.js',
           'src/playlist-loader.js',
           'node_modules/pkcs7/dist/pkcs7.unpad.js',
           'src/decrypter.js'
         ],
-        dest: 'dist/videojs-hive.hls.js'
+        dest: 'dist/videojs.hls-hive.hls.js'
       }
     },
     uglify: {
