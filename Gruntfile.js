@@ -53,7 +53,7 @@ module.exports = function(grunt) {
           'node_modules/pkcs7/dist/pkcs7.unpad.js',
           'src/decrypter.js'
         ],
-        dest: 'dist/videojs.hls-hive.hls.js'
+        dest: 'dist/videojs.hive.hls.js'
       }
     },
     uglify: {

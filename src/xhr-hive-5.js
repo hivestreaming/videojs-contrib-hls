@@ -29,7 +29,7 @@
     request.url = url;
     request.requestTime = new Date().getTime();
 
-    console.log("REQ " + url)
+    //console.log("REQ " + url)
 
     //var req = {
     //    url: url,
@@ -58,7 +58,7 @@
         this.bytesReceived = this.response.byteLength || this.response.length;
         this.bandwidth = Math.floor((this.bytesReceived / this.roundTripTime) * 8 * 1000);
       }
-      console.log("CALLBACK")
+      //console.log("CALLBACK")
 
       return callback.call(this, false, request);
     };
@@ -77,13 +77,13 @@
 
   function onMessage(response) {
 
-    console.log("ON MESSAGE PPLR")
+    //console.log("ON MESSAGE PPLR")
 
     var id = response.requestId
 
-    console.log("ON MESSAGE ID "+id)
+    //console.log("ON MESSAGE ID "+id)
 
-    console.log("E "+proxyRequests.keys())
+    //console.log("E "+proxyRequests.keys())
 
     if(proxyRequests.has(id)){
 
@@ -117,17 +117,17 @@
 
       }
 
-      console.log("ONP B")
+      //console.log("ONP B")
       request.onprogress(hpe)
-      console.log("ONP A")
+      //console.log("ONP A")
 
       request.status = 200
       request.readyState = 4
       request.onreadystatechange()
 
-      console.log("ONL B")
+      //console.log("ONL B")
       request.onload()
-      console.log("ONL A")
+      //console.log("ONL A")
 
       proxyRequests.delete(id)
 
