@@ -39,6 +39,21 @@ module.exports = function(grunt) {
           'src/decrypter.js'
         ],
         dest: 'dist/videojs.hls.js'
+      },
+      disthive: {
+        nonull: true,
+        src: ['src/videojs-hls.js',
+          mediaSourcesDebug,
+          'src/videojs-hls.js',
+          'src/xhr-hive.js',
+          'src/stream.js',
+          'src/m3u8/m3u8-parser.js',
+          'src/playlist.js',
+          'src/playlist-loader.js',
+          'node_modules/pkcs7/dist/pkcs7.unpad.js',
+          'src/decrypter.js'
+        ],
+        dest: 'dist/videojs-hive.hls.js'
       }
     },
     uglify: {
@@ -58,9 +73,7 @@ module.exports = function(grunt) {
         src: 'Gruntfile.js'
       },
       src: {
-        options: {
-          jshintrc: 'src/.jshintrc'
-        },
+
         src: ['src/**/*.js']
       },
       test: {
@@ -343,8 +356,7 @@ module.exports = function(grunt) {
 
   // Default task.
   grunt.registerTask('default',
-                     ['test',
-                      'build']);
+                     ['build']);
 
   // The test task will run `karma:saucelabs` when running in travis,
   // otherwise, it'll default to running karma in chrome.
